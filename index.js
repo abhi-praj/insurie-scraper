@@ -181,7 +181,7 @@ async function scrape({
   console.log(offers)
 
   await browser.close()
-  return offers
+  return { offers }
 }
 
 // POST /scrape API endpoint
