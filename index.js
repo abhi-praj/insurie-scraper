@@ -22,7 +22,9 @@ async function scrape({
   amount,
   rating
 }) {
-  const browser = await puppeteer.launch()
+  const browser = await puppeteer.launch({
+    args: ['--no-sandbox', '--disable-setuid-sandbox']
+  })
   const page = await browser.newPage()
   await page.goto("https://www.term4sale.ca/")
   await page.screenshot({ path: "ss0.png" })
