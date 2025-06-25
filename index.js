@@ -121,14 +121,27 @@ async function scrape({ zip, birthdate, gender, smoke, health, term, amount, rat
 
 // POST /scrape API endpoint
 app.post("/scrape", async (req, res) => {
-  try {
-    const result = await scrape(req.body);
-    res.json(result);
-  } catch (err) {
-    console.error("Scraping error:", err);
-    res.status(500).json({ error: "Failed to scrape data" });
-  }
-});
+    console.log(`[SCRAPE] Incoming request at /scrape`);
+    try {
+      console.log(`[SCRAPE] Request body:`, JSON.stringify(req.body, null, 2));
+  
+      if (!req.body || typeof req.body !== "object") {
+        throw new Error("Invalid or missing JSON body");
+      }
+  
+      const result = await scrape(req.body);
+      
+      console.log(`[SCRAPE] Scraping success. Offers found:`, result?.offers?.length || 0);
+      res.json({ success: true, ...result });
+  
+    } catch (err) {
+      console.error(`[SCRAPE] ERROR:`, err?.stack || err?.message || err);
+      res.status(500).json({
+        success: false,
+        error: err.message || "Internal Server Error"
+      });
+    }
+  });
 
 const port = 3000;
 app.listen(port, () => console.log(`Server listening on port ${port}`));
