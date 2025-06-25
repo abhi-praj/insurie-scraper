@@ -22,6 +22,8 @@ async function scrape({
   amount,
   rating
 }) {
+  birthdate = new Date(birthdate)
+  smoke = smoke === "true" || smoke === true
   const browser = await puppeteer.launch({
     args: ['--no-sandbox', '--disable-setuid-sandbox']
   })
