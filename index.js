@@ -11,83 +11,35 @@ app.use(cors({
 app.use(express.json());
 
 async function scrape({ zip, birthdate, gender, smoke, health, term, amount, rating }) {
-  const browser = await puppeteer.launch({
-    args: ['--no-sandbox', '--disable-setuid-sandbox'],
-  });
+  const browser = await puppeteer.launch();
   const page = await browser.newPage();
-
   await page.goto('https://www.term4sale.ca/');
-
-  // Input ZIP
+  await page.screenshot({ path: "ss0.png" });
+  // ------- page for where data is inputed ---------
   await page.type("#zipcode", zip);
-
-  // Input Birthdate
-  const date = new Date(birthdate);
-  await page.select('select[name="BirthMonth"]', String(date.getMonth() + 1));
-  await page.select('select[name="BirthDay"]', String(date.getDate()));
-  await page.select('select[name="BirthYear"]', String(date.getFullYear()));
-
-  // Gender selection
+  await page.select('select[name="BirthMonth"]', String(birthdate.getMonth() + 1));
+  await page.select('select[name="BirthDay"]', String(birthdate.getDate()));
+  await page.select('select[name="BirthYear"]', String(birthdate.getFullYear()));
+  await page.screenshot({ path: "ss01.png" });
   await page.evaluate((gender) => {
     const input = document.querySelector(gender === 'male' ? 'input[value="M"]' : 'input[value="F"]');
-    if (input) input.click();
+    const label = input?.closest('label');
+    if (label) (label as HTMLElement).click();
   }, gender);
-
-  // Smoke selection
-  await page.evaluate((smoke) => {
-    const input = document.querySelector(smoke ? 'input[value="Y"]' : 'input[value="N"]');
-    if (input) input.click();
+    await page.evaluate((smoke) => {
+    const input = document.querySelector(smoke === false ? 'input[value="N"]' : 'input[value="Y"]');
+    const label = input?.closest('label');
+    if (label) (label as HTMLElement).click();
   }, smoke);
-
-  // Health select
-  const healthMap = {
-    exceptional: 'PP',
-    excellent: 'P',
-    'above average': 'RP',
-    average: 'R'
-  };
-  await page.select('select[name="Health"]', healthMap[health]);
-
-  // Term select
-  const termMap = {
-    '10 yr': '3',
-    '15 yr': '4',
-    '20 yr': '5',
-    '25 yr': '6',
-    '30 yr': '7',
-    '35 yr': '9',
-    '40 yr': '0',
-    'to 65': 'A',
-    'to 70': 'B',
-    'to 75': 'C',
-    'to 100': 'P',
-    other: 'F'
-  };
-  await page.select('select[name="NewCategory"]', termMap[term] || 'F');
-
-  // Amount select
+  await page.select('select[name="Health"]', health === 'exceptional' ? 'PP' : health === 'excellent' ? 'P' : health === 'above average' ? 'RP' : 'R');
+  await page.select('select[name="NewCategory"]', term === '10 yr' ? '3' : term === '15 yr' ? '4' : term === '20 yr' ? '5' : term === '25 yr' ? '6' : term === '30 yr' ? '7' : term === '35 yr' ? '9' : term === '40 yr' ? '0' : term === 'to 65' ? 'A' : term === 'to 70' ? 'B' : term === 'to 75' ? 'C' : term === 'to 100' ? 'P' : term === 'other' ? 'F' : term === '10, 20, 65' ? 'Z:35A#12' : term === '10, 20, 30, 65' ? 'Z:357A#12' : term === 'all level' ? 'Z:3456790ABCP' : term === 'whole life' ? 'H' : term === 'whole life, pay to 65' ? 'I' : term === 'whole life, 20 pay' ? 'J' : term === 'whole life, 15 pay' ? 'K' : 'S'); //'Z:35A#12'
   await page.select('select[name="FaceAmount"]', amount);
+  await page.select('select[name="CompRating"]', rating === 'superior' ? '1' : rating === 'excellent' ? '3' : rating === 'very good' ? '5' : rating === 'adequate' ? '7' : rating === 'fair' ? '9' : rating === 'marginal' ? '11' : rating === 'very vulnerable' ? '13' : rating === 'under state supervision' ? '14' : rating === 'in liquidation' ? '15' : '16');
+  await page.screenshot({ path: "ss02.png" });
+  await Promise.all([page.click('.button-compare-now'), page.waitForNavigation({ waitUntil: 'networkidle0' })]);
+  await page.screenshot({ path: "ss1.png" });
 
-  // Rating select
-  const ratingMap = {
-    superior: '1',
-    excellent: '3',
-    'very good': '5',
-    adequate: '7',
-    fair: '9',
-    marginal: '11',
-    'very vulnerable': '13',
-    'under state supervision': '14',
-    'in liquidation': '15',
-    'best ratings': '16'
-  };
-  await page.select('select[name="CompRating"]', ratingMap[rating] || '16');
-
-  await Promise.all([
-    page.click('.button-compare-now'),
-    page.waitForNavigation({ waitUntil: 'networkidle0' })
-  ]);
-
+  // --------------- the second page with the actual data -------------------------
   const offers = await page.$$eval('.subgrid.subgrid-5', (blocks) => {
     return blocks.map(block => {
       const title = block.querySelector('.text-element.text-company-name')?.textContent?.trim() || 'Undefined';
@@ -97,7 +49,8 @@ async function scrape({ zip, birthdate, gender, smoke, health, term, amount, rat
       const priceSpans = Array.from(block.querySelectorAll('.text-text-mode-label'));
       let yearPrice = 'Undefined';
       let monthPrice = 'Undefined';
-      for (const span of priceSpans) {
+      for (const spanElement of priceSpans) {
+        const span = spanElement as HTMLElement;
         const unit = span.querySelector('.text-text-47')?.textContent?.trim();
         const moUnit = span.querySelector('.text-text-51')?.textContent?.trim();
         const price = span.querySelector('.text-prem')?.textContent?.trim();
@@ -114,6 +67,8 @@ async function scrape({ zip, birthdate, gender, smoke, health, term, amount, rat
       };
     });
   });
+  await page.screenshot({ path: "ss2.png" });
+  console.log(offers);
 
   await browser.close();
   return offers;
