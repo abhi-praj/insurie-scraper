@@ -1,7 +1,13 @@
 import express from "express";
+import cors from "cors";
 import puppeteer from "puppeteer";
 
 const app = express();
+
+app.use(cors({
+    origin: process.env.ALLOWED_ORIGIN
+  }));
+
 app.use(express.json());
 
 async function scrape({ zip, birthdate, gender, smoke, health, term, amount, rating }) {
@@ -11,11 +17,16 @@ async function scrape({ zip, birthdate, gender, smoke, health, term, amount, rat
   const page = await browser.newPage();
 
   await page.goto('https://www.term4sale.ca/');
+
+  // Input ZIP
   await page.type("#zipcode", zip);
-  await page.select('select[name="BirthMonth"]', String(birthdate.getMonth() + 1));
-  await page.select('select[name="BirthDay"]', String(birthdate.getDate()));
-  await page.select('select[name="BirthYear"]', String(birthdate.getFullYear()));
-  
+
+  // Input Birthdate
+  const date = new Date(birthdate);
+  await page.select('select[name="BirthMonth"]', String(date.getMonth() + 1));
+  await page.select('select[name="BirthDay"]', String(date.getDate()));
+  await page.select('select[name="BirthYear"]', String(date.getFullYear()));
+
   // Gender selection
   await page.evaluate((gender) => {
     const input = document.querySelector(gender === 'male' ? 'input[value="M"]' : 'input[value="F"]');
@@ -37,7 +48,7 @@ async function scrape({ zip, birthdate, gender, smoke, health, term, amount, rat
   };
   await page.select('select[name="Health"]', healthMap[health]);
 
-  // Term select simplified (oml the mapping for this sucks)
+  // Term select
   const termMap = {
     '10 yr': '3',
     '15 yr': '4',
@@ -114,7 +125,7 @@ app.post("/scrape", async (req, res) => {
     const result = await scrape(req.body);
     res.json(result);
   } catch (err) {
-    console.error(err);
+    console.error("Scraping error:", err);
     res.status(500).json({ error: "Failed to scrape data" });
   }
 });
