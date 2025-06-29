@@ -1,17 +1,13 @@
 const express = require("express")
 const cors = require("cors")
 const puppeteer = require("puppeteer")
-
 const app = express()
-
 app.use(
   cors({
     origin: process.env.ALLOWED_ORIGIN
   })
 )
-
 app.use(express.json())
-
 async function scrape({
   zip,
   birthdate,
@@ -29,7 +25,7 @@ async function scrape({
   })
   const page = await browser.newPage()
   await page.goto("https://www.term4sale.ca/")
-  await page.screenshot({ path: "ss0.png" })
+  // await page.screenshot({ path: "ss0.png" })
   // ------- page for where data is inputed ---------
   await page.type("#zipcode", zip)
   await page.select(
@@ -38,7 +34,7 @@ async function scrape({
   )
   await page.select('select[name="BirthDay"]', String(birthdate.getDate()))
   await page.select('select[name="BirthYear"]', String(birthdate.getFullYear()))
-  await page.screenshot({ path: "ss01.png" })
+  // await page.screenshot({ path: "ss01.png" })
   await page.evaluate(gender => {
     const input = document.querySelector(
       gender === "male" ? 'input[value="M"]' : 'input[value="F"]'
@@ -128,13 +124,12 @@ async function scrape({
       ? "15"
       : "16"
   )
-  await page.screenshot({ path: "ss02.png" })
+  // await page.screenshot({ path: "ss02.png" })
   await Promise.all([
     page.click(".button-compare-now"),
     page.waitForNavigation({ waitUntil: "networkidle0" })
   ])
-  await page.screenshot({ path: "ss1.png" })
-
+  // await page.screenshot({ path: "ss1.png" })
   // --------------- the second page with the actual data -------------------------
   const offers = await page.$$eval(".subgrid.subgrid-5", blocks => {
     return blocks.map(block => {
@@ -177,25 +172,90 @@ async function scrape({
       }
     })
   })
-  await page.screenshot({ path: "ss2.png" })
+  // await page.screenshot({ path: "ss2.png" })
   console.log(offers)
-
   await browser.close()
-  return { offers }
+  return offers
 }
-
+async function scrape2({
+  gender,
+  smoke,
+  term,
+  amount,
+  birthdate,
+  name="Riley",
+  number="905-469-1234",
+}) {
+  const browser = await puppeteer.launch({
+    args: ['--no-sandbox', '--disable-setuid-sandbox']
+  })
+  const page = await browser.newPage();
+  await page.goto("https://thetermguy.ca/");
+  if (gender === 'male') {
+    await page.waitForSelector('label[for="male"]');
+    await page.click('label[for="male"]');
+  } else {
+    await page.waitForSelector('label[for="female"]');
+    await page.click('label[for="female"]');
+  }
+  if (smoke) {
+    await page.waitForSelector('label[for="Yes"]');
+    await page.click('label[for="Yes"]')
+  } else {
+    await page.waitForSelector('label[for="No"]');
+    await page.click('label[for="No"]')
+  }
+  const selects = await page.$$('select.form-select');
+  selects[0].select(term);
+  selects[1].select(amount);
+  await page.select('select[name="mauticform[dob_month]"]', String(birthdate.getMonth() + 1).padStart(2, '0'))
+  await page.select('select[name="mauticform[dob_day]"]', String(birthdate.getDate() + 1))
+  await page.select('select[name="mauticform[dob_year]"]', String(birthdate.getFullYear()))
+  await page.type('input[name="mauticform[firstname]"]', name)
+  await page.type('input[name="mauticform[phone]"]', number)
+  // await page.click('button[type="submit"]')
+  await page.screenshot({ path: "ss0124.png" });
+  await Promise.all([
+    page.click('button[type="submit"]'),
+    page.waitForNavigation({ waitUntil: "networkidle0" })
+  ])
+  await page.screenshot({ path: "ss0125.png", fullPage: true });
+  // ------------------ RESULTS -----------------------------
+  const offers = await page.$$eval('div[id$="-results"]', blocks => {
+    return blocks.map((block) => {
+      const imgElem = block.querySelector('img.img-fluid.quote-results-logo')
+      const provider = imgElem ? imgElem.src.split('/').pop().split('.')[0] : null
+      const renewable = block.querySelector('.quote-results-renewable')?.textContent?.trim() || null
+      const convertible = block.querySelector('.quote-results-convertible')?.textContent?.trim() || null
+      const exchange = block.querySelector('.quote-results-exchange')?.textContent?.trim() || null
+      const adb = block.querySelector('.quote-results-adb')?.textContent?.trim() || null
+      const monthly_price = block.querySelector('.quote-results-premium')?.textContent?.trim() || null
+      const annual_plan = block.querySelector('.quote-results-premium-pd-annually')?.textContent?.trim() || null
+      return {
+        provider,
+        renewable,
+        convertible,
+        exchange,
+        adb,
+        monthly_price,
+        annual_plan,
+      }
+    })
+  })
+  console.log(offers);
+  await browser.close()
+  console.log('done')
+  return offers
+}
 // POST /scrape API endpoint
 app.post("/scrape", async (req, res) => {
   console.log(`[SCRAPE] Incoming request at /scrape`)
   try {
     console.log(`[SCRAPE] Request body:`, JSON.stringify(req.body, null, 2))
-
     if (!req.body || typeof req.body !== "object") {
       throw new Error("Invalid or missing JSON body")
     }
-
     const result = await scrape(req.body)
-
     console.log(
       `[SCRAPE] Scraping success. Offers found:`,
       result?.offers?.length || 0
@@ -209,6 +269,24 @@ app.post("/scrape", async (req, res) => {
     })
   }
 })
-
+app.post("/scrape2", async (req, res) => {
+  try {
+    if (!req.body || typeof req.body !== "object") {
+      throw new Error("Invalid/Missing JSON body")
+    }
+    const result = await scrape2(req.body)
+    console.log(
+      `[SCRAPE2] Scraping success. Offers found:`,
+      result?.offers?.length || 0
+    )
+    res.json({ success: true, ...result })
+  } catch (err) {
+    console.error(`[SCRAPE2] ERROR:`, err?.stack || err?.message || err)
+    res.status(500).json({
+      success: false,
+      error: err.message || "Internal Server Error"
+    })
+  }
+})
 const port = 3000
 app.listen(port, () => console.log(`Server listening on port ${port}`))
