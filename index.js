@@ -168,7 +168,7 @@ async function scrape({
       }
       return {
         title,
-        amBestRating,
+        // amBestRating,
         term,
         smoke,
         yearPrice,
@@ -190,7 +190,7 @@ async function scrape2({
   amount,
   term,
   name="Riley",
-  number="905-469-1234",
+  number="9054691234",
 }) {
   birthdate = new Date(birthdate)
   const browser = await puppeteer.launch({
@@ -217,7 +217,7 @@ async function scrape2({
   selects[1].select(amount);
   await page.select('select[name="mauticform[dob_month]"]', String(birthdate.getMonth() + 1).padStart(2, '0'))
   await page.select('select[name="mauticform[dob_day]"]', String(birthdate.getDate() + 1))
-  await page.select('select[name="mauticform[dob_year]"]', String(birthdate.getFullYear()))
+  await page.select('select[name="mauticform[dob_year]"]', String(birthdate.getFullYear() + 1))
   await page.type('input[name="mauticform[firstname]"]', name)
   await page.type('input[name="mauticform[phone]"]', number)
   // await page.click('button[type="submit"]')
@@ -226,30 +226,33 @@ async function scrape2({
     page.click('button[type="submit"]'),
     page.waitForNavigation({ waitUntil: "networkidle0" })
   ])
-  await page.screenshot({ path: "ss0125.png", fullPage: true });
+  // await page.screenshot({ path: "ss0125.png", fullPage: true });
 
   // ------------------ RESULTS -----------------------------
-  const offers = await page.$$eval('div[id$="-results"]', blocks => {
+  const offers = await page.$$eval('div[id$="empire-life-results"]', blocks => {
     return blocks.map((block) => {
       const imgElem = block.querySelector('img.img-fluid.quote-results-logo')
       const provider = imgElem ? imgElem.src.split('/').pop().split('.')[0] : null
-      const renewable = block.querySelector('.quote-results-renewable')?.textContent?.trim() || null
-      const convertible = block.querySelector('.quote-results-convertible')?.textContent?.trim() || null
-      const exchange = block.querySelector('.quote-results-exchange')?.textContent?.trim() || null
-      const adb = block.querySelector('.quote-results-adb')?.textContent?.trim() || null
+      // const renewable = block.querySelector('.quote-results-renewable')?.textContent?.trim() || null
+      // const convertible = block.querySelector('.quote-results-convertible')?.textContent?.trim() || null
+      // const exchange = block.querySelector('.quote-results-exchange')?.textContent?.trim() || null
+      // const adb = block.querySelector('.quote-results-adb')?.textContent?.trim() || null
       const monthly_price = block.querySelector('.quote-results-premium')?.textContent?.trim() || null
       const annual_plan = block.querySelector('.quote-results-premium-pd-annually')?.textContent?.trim() || null
       return {
-        provider,
-        renewable,
-        convertible,
-        exchange,
-        adb,
-        monthly_price,
-        annual_plan,
+        title: provider,
+        term: term,
+        smoke: smoke,
+        yearPrice: String(Number(annual_plan) * 12),
+        monthPrice: monthly_price,
+        // renewable,
+        // convertible,
+        // exchange,
+        // adb,
       }
     })
   })
+  // await page.screenshot({ path: "ss.png", fullPage: true })
   console.log(offers);
   await browser.close()
   console.log('done')
@@ -304,3 +307,11 @@ app.post("/scrape2", async (req, res) => {
 
 const port = 3000
 app.listen(port, () => console.log(`Server listening on port ${port}`))
+
+// console.log(scrape2({
+//   birthdate: "1995-01-01",
+//   gender: "male",
+//   smoke: false,
+//   amount: "500000",
+//   term: "15",
+// }))
