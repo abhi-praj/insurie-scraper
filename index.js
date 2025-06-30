@@ -1,22 +1,25 @@
 const express = require("express")
 const cors = require("cors")
 const puppeteer = require("puppeteer")
+
 const app = express()
+
 app.use(
   cors({
     origin: process.env.ALLOWED_ORIGIN
   })
 )
+
 app.use(express.json())
+
 async function scrape({
-  zip,
   birthdate,
   gender,
   smoke,
   health,
   term,
   amount,
-  rating
+  rating,
 }) {
   birthdate = new Date(birthdate)
   smoke = smoke === "true" || smoke === true
@@ -27,7 +30,7 @@ async function scrape({
   await page.goto("https://www.term4sale.ca/")
   // await page.screenshot({ path: "ss0.png" })
   // ------- page for where data is inputed ---------
-  await page.type("#zipcode", zip)
+  await page.type("#zipcode", "L4T 0B1")
   await page.select(
     'select[name="BirthMonth"]',
     String(birthdate.getMonth() + 1)
@@ -130,6 +133,7 @@ async function scrape({
     page.waitForNavigation({ waitUntil: "networkidle0" })
   ])
   // await page.screenshot({ path: "ss1.png" })
+
   // --------------- the second page with the actual data -------------------------
   const offers = await page.$$eval(".subgrid.subgrid-5", blocks => {
     return blocks.map(block => {
@@ -174,15 +178,17 @@ async function scrape({
   })
   // await page.screenshot({ path: "ss2.png" })
   console.log(offers)
+
   await browser.close()
   return offers
 }
+
 async function scrape2({
+  birthdate,
   gender,
   smoke,
-  term,
   amount,
-  birthdate,
+  term,
   name="Riley",
   number="905-469-1234",
 }) {
@@ -220,6 +226,7 @@ async function scrape2({
     page.waitForNavigation({ waitUntil: "networkidle0" })
   ])
   await page.screenshot({ path: "ss0125.png", fullPage: true });
+
   // ------------------ RESULTS -----------------------------
   const offers = await page.$$eval('div[id$="-results"]', blocks => {
     return blocks.map((block) => {
@@ -247,15 +254,19 @@ async function scrape2({
   console.log('done')
   return offers
 }
+
 // POST /scrape API endpoint
 app.post("/scrape", async (req, res) => {
   console.log(`[SCRAPE] Incoming request at /scrape`)
   try {
     console.log(`[SCRAPE] Request body:`, JSON.stringify(req.body, null, 2))
+
     if (!req.body || typeof req.body !== "object") {
       throw new Error("Invalid or missing JSON body")
     }
+
     const result = await scrape(req.body)
+
     console.log(
       `[SCRAPE] Scraping success. Offers found:`,
       result?.offers?.length || 0
@@ -269,6 +280,7 @@ app.post("/scrape", async (req, res) => {
     })
   }
 })
+
 app.post("/scrape2", async (req, res) => {
   try {
     if (!req.body || typeof req.body !== "object") {
@@ -288,5 +300,6 @@ app.post("/scrape2", async (req, res) => {
     })
   }
 })
+
 const port = 3000
 app.listen(port, () => console.log(`Server listening on port ${port}`))
