@@ -192,6 +192,7 @@ async function scrape2({
   name="Riley",
   number="905-469-1234",
 }) {
+  birthdate = new Date(birthdate)
   const browser = await puppeteer.launch({
     args: ['--no-sandbox', '--disable-setuid-sandbox']
   })
