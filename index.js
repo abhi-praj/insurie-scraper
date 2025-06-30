@@ -259,7 +259,7 @@ async function scrape2({
     // await page.screenshot({ path: "ss0125.png", fullPage: true });
 
     // ------------------ RESULTS -----------------------------
-    const offers = await page.$$eval('div[id$="empire-life-results"]', blocks => {
+    const offers = await page.$$eval('div[id$="empire-life-results"]', (blocks, term, smoke) => {
       return blocks.map((block) => {
         const imgElem = block.querySelector('img.img-fluid.quote-results-logo')
         const provider = imgElem ? imgElem.src.split('/').pop().split('.')[0] : null
