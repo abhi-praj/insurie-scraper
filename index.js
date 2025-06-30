@@ -240,7 +240,7 @@ async function scrape2({
     }
     
     const selects = await page.$$('select.form-select');
-    await selects[0].select(term);
+    await selects[0].select(term.split(' ')[0]);
     await selects[1].select(amount);
     
     await page.select('select[name="mauticform[dob_month]"]', String(birthdate.getMonth() + 1).padStart(2, '0'))
