@@ -243,8 +243,8 @@ async function scrape2({
     await selects[0].select(term.split(' ')[0]);
     await selects[1].select(amount);
     
-    await page.select('select[name="mauticform[dob_month]"]', String(birthdate.getMonth() + 1).padStart(2, '0'))
-    await page.select('select[name="mauticform[dob_day]"]', String(birthdate.getDate()))
+    await page.select('select[name="mauticform[dob_month]"]', '02')
+    await page.select('select[name="mauticform[dob_day]"]', '31')
     await page.select('select[name="mauticform[dob_year]"]', String(birthdate.getFullYear()))
     
     await page.type('input[name="mauticform[firstname]"]', name)
@@ -376,12 +376,3 @@ app.post("/scrape2", async (req, res) => {
 
 const port = 3000
 app.listen(port, () => console.log(`Server listening on port ${port}`))
-
-// For testing
-// console.log(scrape2({
-//   birthdate: "1995-01-01",
-//   gender: "male",
-//   smoke: false,
-//   amount: "500000",
-//   term: "15",
-// }))
